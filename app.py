@@ -1,11 +1,11 @@
 import os
 
-from flask import Flask, request, session, g, abort, jsonify
+from flask import Flask, request, session, g, abort, jsonify, make_response
 from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
 import jwt
 
-# from forms import UserAddForm, UserEditForm, LoginForm, MessageForm
+from forms import UserAddForm, LoginForm
 from models import db, connect_db, User, Like, Dislike
 
 CURR_USER_KEY = "curr_user"
@@ -34,8 +34,12 @@ connect_db(app)
 def add_user_to_g():
     """If we're logged in, add curr user to Flask global."""
 
-    if CURR_USER_KEY in session:
-        g.user = User.query.get(session[CURR_USER_KEY])
+    if "token" in request.json:
+        token = request.json["token"]
+        payload = jwt.decode(token, app.config.get('SECRET_KEY'))
+
+        if "username" in payload:
+            g.user = User.query.get(payload.username)
 
     else:
         g.user = None
@@ -45,10 +49,10 @@ def do_login(user):
     """Log in user."""
 
     payload = {
-        username: user.username
+        "username": user.username
     }
 
-    return jwt.sign(payload, SECRET_KEY)
+    return jwt.encode(payload, app.config.get('SECRET_KEY'))
 
 
 def do_logout():
@@ -91,53 +95,65 @@ def signup():
             db.session.commit()
 
         except IntegrityError as e:
-            status_message = "username already taken"
+            status_message = "username or email already taken"
             return jsonify(
                 status=status_message
             )
 
         token = do_login(user)
-        print('token is', token)
-        print('user', user)
+
         user_to_send = {
-            "username":user.username,
-            "email":user.password,
-            "first_name":user.first_name,
-            "last_name":user.last_name,
-            "image_url":user.image_url,
-            "hobbies":user.hobbies,
-            "interests":user.interests,
-            "zip_code":user.zip_code,
-            "friend_radius":user.friend_radius,
+            "username": user.username,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "image_url": user.image_url,
+            "hobbies": user.hobbies,
+            "interests": user.interests,
+            "zip_code": user.zip_code,
+            "friend_radius": user.friend_radius,
             }
 
-        return jsonify(
+        return (jsonify(
             user=user_to_send,
             token=token
-        )
+        ), 201)
 
     else:
-        return jsonify(status="unable to add user")
+        return (jsonify(status="unable to add user"), 400)
 
 
-@app.route('/login', methods=["GET", "POST"])
+@app.route('/login', methods=["POST"])
 def login():
     """Handle user login."""
 
-    form = LoginForm()
+    received = request.json
+    form = LoginForm(csrf_enabled=False, data=received)
 
     if form.validate_on_submit():
         user = User.authenticate(form.username.data,
                                  form.password.data)
 
         if user:
-            do_login(user)
-            flash(f"Hello, {user.username}!", "success")
-            return redirect("/")
+            token = do_login(user)
 
-        flash("Invalid credentials.", 'danger')
+            user_to_send = {
+                "username": user.username,
+                "email": user.email,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "image_url": user.image_url,
+                "hobbies": user.hobbies,
+                "interests": user.interests,
+                "zip_code": user.zip_code,
+                "friend_radius": user.friend_radius,
+                }
 
-    return render_template('users/login.html', form=form)
+            return (jsonify(
+                    user=user_to_send,
+                    token=token), 201)
+    
+    return (jsonify(status="invalid credentials"), 400)
 
 
 @app.route('/logout')
@@ -146,6 +162,5 @@ def logout():
 
     do_logout()
 
-    flash("You have successfully logged out.", 'success')
     return redirect("/login")
 
