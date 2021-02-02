@@ -36,13 +36,15 @@ def add_user_to_g():
 
     if "token" in request.json:
         token = request.json["token"]
-        payload = jwt.decode(token, app.config.get('SECRET_KEY'))
+        payload = jwt.decode(token, app.config.get('SECRET_KEY'), algorithms=["HS256"])
 
         if "username" in payload:
-            g.user = User.query.get(payload.username)
+            g.user = User.query.filter_by(username=payload["username"])
 
     else:
         g.user = None
+
+    print('end of add_user_to_g, g.user=', g.user)
 
 
 def do_login(user):
@@ -53,13 +55,6 @@ def do_login(user):
     }
 
     return jwt.encode(payload, app.config.get('SECRET_KEY'))
-
-
-def do_logout():
-    """Logout user."""
-
-    if CURR_USER_KEY in session:
-        del session[CURR_USER_KEY]
 
 
 @app.route('/signup', methods=["POST"])
@@ -137,30 +132,59 @@ def login():
         if user:
             token = do_login(user)
 
-            user_to_send = {
-                "username": user.username,
-                "email": user.email,
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-                "image_url": user.image_url,
-                "hobbies": user.hobbies,
-                "interests": user.interests,
-                "zip_code": user.zip_code,
-                "friend_radius": user.friend_radius,
-                }
-
             return (jsonify(
-                    user=user_to_send,
+                    user=user.serialize(),
                     token=token), 201)
     
     return (jsonify(status="invalid credentials"), 400)
 
 
-@app.route('/logout')
-def logout():
-    """Handle logout of user."""
+##############################################################################
+# General user routes:
 
-    do_logout()
+@app.route('/users/<int:user_id>')
+def users_show(user_id):
+    """Get a user info.
+    Returns JSON: 
+        {
+        "user": {
+            "email": "test1@test.com",
+            "first_name": "test",
+            "friend_radius": 5,
+            "hobbies": "test",
+            "image_url": "/static/images/default-pic.png",
+            "interests": "test",
+            "last_name": "test",
+            "username": "test1",
+            "zip_code": "11111"
+            }
+        }
+    """
 
-    return redirect("/login")
+    if not g.user:
+        (jsonify(status="invalid credentials"), 400)
 
+    user = User.query.get_or_404(user_id)
+
+    return jsonify(user=user.serialize())
+
+@app.route('/users/<int:user_id>/potentials')
+def get_potential_friends(user_id):
+    """Get list of users where current user has not already liked/disliked them,
+    and other user has not disliked them.
+    Also filters by location.
+    """
+
+    if not g.user:
+        (jsonify(status="invalid credentials"), 400)
+
+    current_user = User.query.get_or_404(user_id)
+    users = User.query.all()
+
+    def filterUsers(user):
+        return current_user.is_potential(user)
+
+    user_options = list(filter(filterUsers, users))
+    user_options_serialized = [ user.serialize() for user in user_options]
+
+    return jsonify(user_options=user_options_serialized)

@@ -159,6 +159,31 @@ class User(db.Model):
         found_user_list = [user for user in self.dislikes if user == other_user]
         return len(found_user_list) == 1
 
+    def serialize(self):
+        """Serialize to dictionary."""
+        return { 
+            "id": self.id,
+            "username": self.username,
+            "email": self.email,
+            "first_name": self.first_name,
+            "last_name": self.last_name,
+            "image_url": self.image_url,
+            "hobbies": self.hobbies,
+            "interests": self.interests,
+            "zip_code": self.zip_code,
+            "friend_radius": self.friend_radius,
+        }
+
+    def is_potential(self, other_user):
+        """ Is this user a potential match? """
+        if (self.is_liking(other_user) or 
+            self.is_disliked_by(other_user) or
+            self.is_disliking(other_user) or
+            self.id == other_user.id):
+            return False
+        else:
+            return True
+
     @classmethod
     def signup(cls, username, email, password, first_name, last_name, image_url, hobbies, interests, zip_code, friend_radius):
         """Sign up user.
