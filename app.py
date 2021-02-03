@@ -25,10 +25,22 @@ toolbar = DebugToolbarExtension(app)
 
 connect_db(app)
 
+INVALID_CREDENTIALS_MSG = "invalid-credentials"
+INVALID_CREDENTIALS_STATUS_CODE = 400
+
+
+def _get_json_message(msg, status_code):
+    """ Takes a message and status code and returns JSON
+        
+        Returns:
+        {
+            status: "invalid-credentitials"
+        }
+    """
+    return (jsonify(status=msg), status_code)
 
 ##############################################################################
 # User signup/login/logout
-
 
 @app.before_request
 def add_user_to_g():
@@ -68,8 +80,6 @@ def signup():
     If the there already is a user with that username: return JSON
     with error message
     """
-    if CURR_USER_KEY in session:
-        del session[CURR_USER_KEY]
 
     received = request.json
 
@@ -87,15 +97,12 @@ def signup():
                 hobbies=form.hobbies.data,
                 interests=form.interests.data,
                 zip_code=form.zip_code.data,
-                friend_radius=form.friend_radius.data,
+                friend_radius_miles=form.friend_radius_miles.data,
             )
             db.session.commit()
 
         except IntegrityError as e:
-            status_message = "username or email already taken"
-            return jsonify(
-                status=status_message
-            )
+            return _get_json_message("username-email-already-taken", INVALID_CREDENTIALS_STATUS_CODE)
 
         token = do_login(user)
 
@@ -105,7 +112,7 @@ def signup():
         ), 201)
 
     else:
-        return (jsonify(status="unable to add user"), 400)
+        return _get_json_message("unable-to-add-user", INVALID_CREDENTIALS_STATUS_CODE)
 
 
 @app.route('/login', methods=["POST"])
@@ -126,8 +133,7 @@ def login():
                     user=user.serialize(),
                     token=token), 201)
     
-    return (jsonify(status="invalid credentials"), 400)
-
+    return _get_json_message(INVALID_CREDENTIALS_MSG, INVALID_CREDENTIALS_STATUS_CODE)
 
 ##############################################################################
 # General user routes:
@@ -140,7 +146,7 @@ def users_show(user_id):
         "user": {
             "email": "test1@test.com",
             "first_name": "test",
-            "friend_radius": 5,
+            "friend_radius_miles": 5,
             "hobbies": "test",
             "image_url": "/static/images/default-pic.png",
             "interests": "test",
@@ -152,7 +158,8 @@ def users_show(user_id):
         }
     """
     if not g.user:
-        return (jsonify(status="invalid credentials"), 400)
+        # TODO: create an underscore function 
+        return _get_json_message(INVALID_CREDENTIALS_MSG, INVALID_CREDENTIALS_STATUS_CODE)
 
     user = User.query.get_or_404(user_id)
 
@@ -168,21 +175,50 @@ def get_potential_friends(user_id):
     """
 
     if not g.user:
-        return (jsonify(status="invalid credentials"), 400)
+        return _get_json_message(INVALID_CREDENTIALS_MSG, INVALID_CREDENTIALS_STATUS_CODE)
 
     current_user = User.query.get_or_404(user_id)
 
     if current_user.username != g.user.username:
-        return (jsonify(
-            status="invalid credentials: can only view your own potentials"),
-            400)
+        return _get_json_message(INVALID_CREDENTIALS_MSG, INVALID_CREDENTIALS_STATUS_CODE)
 
-    users = User.query.all()
-
-    def filterUsers(user):
-        return current_user.is_potential(user)
-
-    user_options = list(filter(filterUsers, users))
-    user_options_serialized = [ user.serialize() for user in user_options]
+    user_options = User.get_list_of_potential_friends(current_user)
+    user_options_serialized = [user.serialize() for user in user_options]
 
     return jsonify(user_options=user_options_serialized)
+
+@app.route('/users/like/<int:other_id>', methods=['POST'])
+def like_potential_friend(other_id):
+    """Like a potential friend for logged in user."""
+
+    if not g.user:
+        return _get_json_message(INVALID_CREDENTIALS_MSG, INVALID_CREDENTIALS_STATUS_CODE)
+
+    user_options = User.get_list_of_potential_friends(g.user)
+    other_user = User.query.get_or_404(other_id)
+
+    if other_user not in user_options:
+        return _get_json_message("user-not-potential-friend", INVALID_CREDENTIALS_STATUS_CODE)
+
+    g.user.likes.append(other_user)
+    db.session.commit()
+
+    return jsonify(status="user-liked")
+
+@app.route('/users/dislike/<int:other_id>', methods=['POST'])
+def dislike_potential_friend(other_id):
+    """Dislike a potential friend for logged in user."""
+
+    if not g.user:
+        return _get_json_message(INVALID_CREDENTIALS_MSG, INVALID_CREDENTIALS_STATUS_CODE)
+
+    user_options = User.get_list_of_potential_friends(g.user)
+    other_user = User.query.get_or_404(other_id)
+
+    if other_user not in user_options:
+        return _get_json_message("user-not-potential-friend", INVALID_CREDENTIALS_STATUS_CODE)
+
+    g.user.dislikes.append(other_user)
+    db.session.commit()
+
+    return jsonify(status="user-disliked")

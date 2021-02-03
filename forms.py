@@ -21,7 +21,7 @@ class UserAddForm(FlaskForm):
     hobbies = StringField('Hobbies', validators=[InputRequired()])
     interests = StringField('Interests', validators=[InputRequired()])
     zip_code = StringField('Zip Code', validators=[InputRequired()])
-    friend_radius = StringField('Friend Radius', validators=[InputRequired()])
+    friend_radius_miles = StringField('Friend Radius', validators=[InputRequired()])
 
 # class UserEditForm(FlaskForm):
 #     """Form for editing users."""
