@@ -12,11 +12,11 @@ import requests
 from faker import Faker
 
 
-USERS_CSV_HEADERS = ['email', 'username', 'password', 'first_name', 'last_name', 'image_url', 'interests', 'hobbies', 'zip_code', 'friend_radius']
+USERS_CSV_HEADERS = ['email', 'username', 'password', 'first_name', 'last_name', 'image_url', 'interests', 'hobbies', 'zip_code', 'coordinates', 'friend_radius']
 LIKES_CSV_HEADERS = ['liker_user_id', 'liked_user_id']
 DISLIKES_CSV_HEADERS = ['disliker_user_id', 'disliked_user_id']
 
-NUM_USERS = 40
+NUM_USERS = 20
 NUM_LIKES = 10
 NUM_DISLIKES = 10
 
@@ -31,6 +31,8 @@ image_urls = [
 ]
 
 radius_choices = [15, 30, 5, 100]
+zip_code_choices = ["95125", "95129", "95051", "95050", "94110", "94612"]
+coordinates_choices = ["-121.9,37.32", "-121.98,37.305", "-121.98,37.35", "-121.96,37.35", "-122.42,37.76", "-122.27,37.81"]
 
 
 with open('users.csv', 'w') as users_csv:
@@ -47,7 +49,8 @@ with open('users.csv', 'w') as users_csv:
             password='$2b$12$Q1PUFjhN/AWRQ21LbGYvjeLpZZB6lfZ1BPwifHALGO6oIbyC3CmJe',
             hobbies=fake.sentence(),
             interests=fake.sentence(),
-            zip_code=fake.postcode(),
+            zip_code=choice(zip_code_choices),
+            coordinates=choice(coordinates_choices),
             friend_radius=choice(radius_choices)
         ))
 

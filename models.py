@@ -2,9 +2,13 @@
 
 from flask_bcrypt import Bcrypt
 from flask_sqlalchemy import SQLAlchemy
+from secret import MAPBOX_API_TOKEN
+import requests
 
 bcrypt = Bcrypt()
 db = SQLAlchemy()
+
+MAPBOX_API_BASE_URL = 'https://api.mapbox.com'
 
 
 class Like(db.Model):
@@ -93,6 +97,11 @@ class User(db.Model):
         db.Text,
         nullable=False,
     )
+
+    coordinates = db.Column(
+        db.Text,
+        nullable=False,
+    )
     
     friend_radius = db.Column(
         db.Integer,
@@ -176,13 +185,46 @@ class User(db.Model):
 
     def is_potential(self, other_user):
         """ Is this user a potential match? """
-        if (self.is_liking(other_user) or 
-            self.is_disliked_by(other_user) or
-            self.is_disliking(other_user) or
-            self.id == other_user.id):
-            return False
-        else:
-            return True
+
+        # TODO: FIX THIS
+
+
+
+        # self coords
+        # zipSelf = self.get_coords(self.zip_code)
+        # zipOther = self.get_coords(other_user.zip_code)
+        # coordsSelf = self.get_coords("95125")
+        # coordsOther = self.get_coords("95037")
+
+        # response = requests.get(f"{MAPBOX_API_BASE_URL}/optimized-trips/v1/mapbox/driving/{coordsSelf};{coordsOther}?access_token={MAPBOX_API_TOKEN}")
+        # r = response.json()
+        # distance = r["trips"][0]["distance"]
+
+        # is_outside_self_radius = True if (distance > self.friend_radius) else False
+        # is_outside_other_radius = True if (distance > other_user.friend_radius) else False
+
+        # # other user coords
+
+        # if (self.is_liking(other_user) or 
+        #     self.is_disliked_by(other_user) or
+        #     self.is_disliking(other_user) or
+        #     self.id == other_user.id or
+        #     is_outside_self_radius or
+        #     is_outside_other_radius):
+        #     return False
+        # else:
+        #     return True
+        
+        # return True
+
+    def get_coords(self, zip_code):
+        """ Gets the longitude, latitude of the Zip Code """
+        response = requests.get(f"{MAPBOX_API_BASE_URL}/geocoding/v5/mapbox.places/{zip_code}.json?access_token={MAPBOX_API_TOKEN}")
+        r = response.json()
+
+        coords = r["features"][0]["center"]
+
+        return f"{coords[0]},{coords[1]}" 
 
     @classmethod
     def signup(cls, username, email, password, first_name, last_name, image_url, hobbies, interests, zip_code, friend_radius):
@@ -192,6 +234,7 @@ class User(db.Model):
         """
 
         hashed_pwd = bcrypt.generate_password_hash(password).decode('UTF-8')
+        coordinates = self.get_coords(zip_code)
 
         user = User(
             username=username,
@@ -203,6 +246,7 @@ class User(db.Model):
             hobbies=hobbies,
             interests=interests,
             zip_code=zip_code,
+            coordinates=coordinates,
             friend_radius=friend_radius,
         )
 
