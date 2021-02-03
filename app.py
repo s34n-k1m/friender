@@ -52,7 +52,8 @@ def do_login(user):
     """Log in user."""
 
     payload = {
-        "username": user.username
+        "username": user.username,
+        "user_id": user.id
     }
 
     return jwt.encode(payload, app.config.get('SECRET_KEY'))
