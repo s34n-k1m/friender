@@ -231,6 +231,17 @@ class User(db.Model):
         coords = r["features"][0]["center"]
 
         return f"{coords[0]},{coords[1]}" 
+    
+    @classmethod
+    def get_list_of_potential_friends(cls, current_user):
+        """ Given the current user, return a list of all potential friends. """
+
+        users = cls.query.all()
+
+        def filterUsers(user):
+            return current_user.is_potential(user)
+
+        return list(filter(filterUsers, users))
 
     @classmethod
     def signup(cls, username, email, password, first_name, last_name, image_url, hobbies, interests, zip_code, friend_radius):

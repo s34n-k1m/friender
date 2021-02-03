@@ -176,12 +176,43 @@ def get_potential_friends(user_id):
             status="invalid credentials: can only view your own potentials"),
             400)
 
-    users = User.query.all()
-
-    def filterUsers(user):
-        return current_user.is_potential(user)
-
-    user_options = list(filter(filterUsers, users))
-    user_options_serialized = [ user.serialize() for user in user_options]
+    user_options = get_list_of_potential_friends(current_user)
+    user_options_serialized = [user.serialize() for user in user_options]
 
     return jsonify(user_options=user_options_serialized)
+
+@app.route('/users/like/<int:other_id>', methods=['POST'])
+def like_potential_friend(other_id):
+    """Like a potential friend for logged in user."""
+
+    if not g.user:
+        return (jsonify(status="invalid credentials"), 400)
+
+    user_options = User.get_list_of_potential_friends(g.user)
+    other_user = User.query.get_or_404(other_id)
+
+    if other_user not in user_options:
+        return (jsonify(status="user is not a potential friend"), 400)
+
+    g.user.likes.append(other_user)
+    db.session.commit()
+
+    return jsonify(status="user liked")
+
+@app.route('/users/dislike/<int:other_id>', methods=['POST'])
+def dislike_potential_friend(other_id):
+    """Dislike a potential friend for logged in user."""
+
+    if not g.user:
+        return (jsonify(status="invalid credentials"), 400)
+
+    user_options = User.get_list_of_potential_friends(g.user)
+    other_user = User.query.get_or_404(other_id)
+
+    if other_user not in user_options:
+        return (jsonify(status="user is not a potential friend"), 400)
+
+    g.user.dislikes.append(other_user)
+    db.session.commit()
+
+    return jsonify(status="user disliked")
