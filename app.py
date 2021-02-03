@@ -33,13 +33,14 @@ connect_db(app)
 @app.before_request
 def add_user_to_g():
     """If we're logged in, add curr user to Flask global."""
-
+    # TODO: this is currently throwing an error when invalid token/ no token is
+    # passed. Need to update. 
     if "token" in request.json:
         token = request.json["token"]
         payload = jwt.decode(token, app.config.get('SECRET_KEY'), algorithms=["HS256"])
 
         if "username" in payload:
-            g.user = User.query.filter_by(username=payload["username"])
+            g.user = User.query.filter_by(username=payload["username"]).first()
 
     else:
         g.user = None
@@ -97,20 +98,8 @@ def signup():
 
         token = do_login(user)
 
-        user_to_send = {
-            "username": user.username,
-            "email": user.email,
-            "first_name": user.first_name,
-            "last_name": user.last_name,
-            "image_url": user.image_url,
-            "hobbies": user.hobbies,
-            "interests": user.interests,
-            "zip_code": user.zip_code,
-            "friend_radius": user.friend_radius,
-            }
-
         return (jsonify(
-            user=user_to_send,
+            user=user.serialize(),
             token=token
         ), 201)
 
@@ -156,13 +145,13 @@ def users_show(user_id):
             "interests": "test",
             "last_name": "test",
             "username": "test1",
-            "zip_code": "11111"
+            "zip_code": "11111",
+            "coordinates": "-122.42,37.76"
             }
         }
     """
-
     if not g.user:
-        (jsonify(status="invalid credentials"), 400)
+        return (jsonify(status="invalid credentials"), 400)
 
     user = User.query.get_or_404(user_id)
 
@@ -170,15 +159,23 @@ def users_show(user_id):
 
 @app.route('/users/<int:user_id>/potentials')
 def get_potential_friends(user_id):
-    """Get list of users where current user has not already liked/disliked them,
-    and other user has not disliked them.
-    Also filters by location.
+    """Get list of users that are potential friends for the current user. 
+    Potential friends are ones where:
+    - current user has not already liked/disliked
+    - other user has not already diskliked
+    - distance between users is less than both user's friend radii
     """
 
     if not g.user:
-        (jsonify(status="invalid credentials"), 400)
+        return (jsonify(status="invalid credentials"), 400)
 
     current_user = User.query.get_or_404(user_id)
+
+    if current_user.username != g.user.username:
+        return (jsonify(
+            status="invalid credentials: can only view your own potentials"),
+            400)
+
     users = User.query.all()
 
     def filterUsers(user):

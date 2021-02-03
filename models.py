@@ -4,6 +4,7 @@ from flask_bcrypt import Bcrypt
 from flask_sqlalchemy import SQLAlchemy
 from secret import MAPBOX_API_TOKEN
 import requests
+from geopy.distance import geodesic
 
 bcrypt = Bcrypt()
 db = SQLAlchemy()
@@ -168,6 +169,28 @@ class User(db.Model):
         found_user_list = [user for user in self.dislikes if user == other_user]
         return len(found_user_list) == 1
 
+    def is_outside_self_radius(self, other_user, distance):
+        """Is the distance between user and other user greater than this user's
+        friend radius? """
+        return True if (distance > self.friend_radius) else False
+
+    def is_outside_other_radius(self, other_user, distance):
+        """Is the distance between user and other user greater than the other
+        user's friend radius? """
+        return True if (distance > other_user.friend_radius) else False
+
+    def calculate_distance(self, other_user):
+        """ Given a different user, calculate the direct distance in miles
+        between the two """
+        coordSelf = self.coordinates.split(',')
+        coordOther = other_user.coordinates.split(',')
+
+        coordSelfCalc = (float(coordSelf[1]), float(coordSelf[0]))
+        coordOtherCalc = (float(coordOther[1]), float(coordOther[0]))
+
+        return geodesic(coordSelfCalc, coordOtherCalc).miles
+
+
     def serialize(self):
         """Serialize to dictionary."""
         return { 
@@ -180,43 +203,26 @@ class User(db.Model):
             "hobbies": self.hobbies,
             "interests": self.interests,
             "zip_code": self.zip_code,
+            "coordinates": self.coordinates,
             "friend_radius": self.friend_radius,
         }
 
     def is_potential(self, other_user):
         """ Is this user a potential match? """
 
-        # TODO: FIX THIS
+        distance = self.calculate_distance(other_user)
 
+        if (self.is_liking(other_user) or 
+            self.is_disliked_by(other_user) or
+            self.is_disliking(other_user) or
+            self.id == other_user.id or
+            self.is_outside_self_radius(other_user, distance) or
+            self.is_outside_other_radius(other_user, distance)):
+            return False
+        else:
+            return True
 
-
-        # self coords
-        # zipSelf = self.get_coords(self.zip_code)
-        # zipOther = self.get_coords(other_user.zip_code)
-        # coordsSelf = self.get_coords("95125")
-        # coordsOther = self.get_coords("95037")
-
-        # response = requests.get(f"{MAPBOX_API_BASE_URL}/optimized-trips/v1/mapbox/driving/{coordsSelf};{coordsOther}?access_token={MAPBOX_API_TOKEN}")
-        # r = response.json()
-        # distance = r["trips"][0]["distance"]
-
-        # is_outside_self_radius = True if (distance > self.friend_radius) else False
-        # is_outside_other_radius = True if (distance > other_user.friend_radius) else False
-
-        # # other user coords
-
-        # if (self.is_liking(other_user) or 
-        #     self.is_disliked_by(other_user) or
-        #     self.is_disliking(other_user) or
-        #     self.id == other_user.id or
-        #     is_outside_self_radius or
-        #     is_outside_other_radius):
-        #     return False
-        # else:
-        #     return True
-        
-        # return True
-
+    @classmethod
     def get_coords(self, zip_code):
         """ Gets the longitude, latitude of the Zip Code """
         response = requests.get(f"{MAPBOX_API_BASE_URL}/geocoding/v5/mapbox.places/{zip_code}.json?access_token={MAPBOX_API_TOKEN}")
@@ -234,7 +240,7 @@ class User(db.Model):
         """
 
         hashed_pwd = bcrypt.generate_password_hash(password).decode('UTF-8')
-        coordinates = self.get_coords(zip_code)
+        coordinates = cls.get_coords(zip_code)
 
         user = User(
             username=username,
