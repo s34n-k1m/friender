@@ -12,7 +12,7 @@ import requests
 from faker import Faker
 
 
-USERS_CSV_HEADERS = ['email', 'username', 'password', 'first_name', 'last_name', 'image_url', 'interests', 'hobbies', 'zip_code', 'coordinates', 'friend_radius']
+USERS_CSV_HEADERS = ['email', 'username', 'password', 'first_name', 'last_name', 'image_url', 'interests', 'hobbies', 'zip_code', 'coordinates', 'friend_radius_miles']
 LIKES_CSV_HEADERS = ['liker_user_id', 'liked_user_id']
 DISLIKES_CSV_HEADERS = ['disliker_user_id', 'disliked_user_id']
 
@@ -51,7 +51,7 @@ with open('users.csv', 'w') as users_csv:
             interests=fake.sentence(),
             zip_code=choice(zip_code_choices),
             coordinates=choice(coordinates_choices),
-            friend_radius=choice(radius_choices)
+            friend_radius_miles=choice(radius_choices)
         ))
 
 

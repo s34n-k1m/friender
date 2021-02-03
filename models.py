@@ -46,7 +46,6 @@ class Dislike(db.Model):
         primary_key=True,
     )
 
-
 class User(db.Model):
     """User in the system."""
 
@@ -64,18 +63,23 @@ class User(db.Model):
     )
 
     username = db.Column(
-        db.Text,
+        db.String(20),
         nullable=False,
         unique=True,
     )
 
-    first_name = db.Column(
+    password = db.Column(
         db.Text,
         nullable=False,
     )
 
+    first_name = db.Column(
+        db.String(20),
+        nullable=False,
+    )
+
     last_name = db.Column(
-        db.Text,
+        db.String(20),
         nullable=False,
     )
 
@@ -95,7 +99,7 @@ class User(db.Model):
     )
 
     zip_code = db.Column(
-        db.Text,
+        db.String(5),
         nullable=False,
     )
 
@@ -104,16 +108,12 @@ class User(db.Model):
         nullable=False,
     )
     
-    friend_radius = db.Column(
+    friend_radius_miles = db.Column(
         db.Integer,
         nullable=False,
     )
 
-    password = db.Column(
-        db.Text,
-        nullable=False,
-    )
-
+    # TODO: don't need to but think about making the name more specific e.g. users_i_like
     likes = db.relationship(
         "User",
         secondary="likes",
@@ -142,54 +142,11 @@ class User(db.Model):
         secondaryjoin=(Dislike.disliker_user_id == id)
     )
 
+
+    ############ GENERAL METHODS################################################################
+
     def __repr__(self):
         return f"<User #{self.id}: {self.username}, {self.email}>"
-
-    def is_liked_by(self, other_user):
-        """Is this user liked by `other_user`?"""
-
-        found_user_list = [user for user in self.liked_by if user == other_user]
-        return len(found_user_list) == 1
-
-    def is_liking(self, other_user):
-        """Is this user liking `other_user`?"""
-
-        found_user_list = [user for user in self.likes if user == other_user]
-        return len(found_user_list) == 1
-    
-    def is_disliked_by(self, other_user):
-        """Is this user disliked by `other_user`?"""
-
-        found_user_list = [user for user in self.disliked_by if user == other_user]
-        return len(found_user_list) == 1
-
-    def is_disliking(self, other_user):
-        """Is this user disliking `other_user`?"""
-
-        found_user_list = [user for user in self.dislikes if user == other_user]
-        return len(found_user_list) == 1
-
-    def is_outside_self_radius(self, other_user, distance):
-        """Is the distance between user and other user greater than this user's
-        friend radius? """
-        return True if (distance > self.friend_radius) else False
-
-    def is_outside_other_radius(self, other_user, distance):
-        """Is the distance between user and other user greater than the other
-        user's friend radius? """
-        return True if (distance > other_user.friend_radius) else False
-
-    def calculate_distance(self, other_user):
-        """ Given a different user, calculate the direct distance in miles
-        between the two """
-        coordSelf = self.coordinates.split(',')
-        coordOther = other_user.coordinates.split(',')
-
-        coordSelfCalc = (float(coordSelf[1]), float(coordSelf[0]))
-        coordOtherCalc = (float(coordOther[1]), float(coordOther[0]))
-
-        return geodesic(coordSelfCalc, coordOtherCalc).miles
-
 
     def serialize(self):
         """Serialize to dictionary."""
@@ -204,8 +161,73 @@ class User(db.Model):
             "interests": self.interests,
             "zip_code": self.zip_code,
             "coordinates": self.coordinates,
-            "friend_radius": self.friend_radius,
+            "friend_radius_miles": self.friend_radius_miles,
         }
+
+    ############ LIKE/DISLIKE METHODS ########################################################
+
+    def is_liked_by(self, other_user):
+        """Is this user liked by `other_user`?"""
+
+        # found_user_list = [user for user in self.liked_by if user == other_user]
+        return any([user for user in self.liked_by if user == other_user])
+
+    def is_liking(self, other_user):
+        """Is this user liking `other_user`?"""
+
+        # found_user_list = [user for user in self.likes if user == other_user]
+        # return len(found_user_list) == 1
+        return any([user for user in self.likes if user == other_user])
+    
+    def is_disliked_by(self, other_user):
+        """Is this user disliked by `other_user`?"""
+
+        # found_user_list = [user for user in self.disliked_by if user == other_user]
+        # return len(found_user_list) == 1
+        return any([user for user in self.disliked_by if user == other_user])
+
+    def is_disliking(self, other_user):
+        """Is this user disliking `other_user`?"""
+
+        # found_user_list = [user for user in self.dislikes if user == other_user]
+        # return len(found_user_list) == 1
+        return any([user for user in self.dislikes if user == other_user])
+
+    ############ DISTANCE METHODS ##########################################################
+
+    def is_outside_self_radius(self, other_user, distance):
+        """Is the distance between user and other user greater than this user's
+        friend radius? """
+        return True if (distance > self.friend_radius_miles) else False
+
+    def is_outside_other_radius(self, other_user, distance):
+        """Is the distance between user and other user greater than the other
+        user's friend radius? """
+        return True if (distance > other_user.friend_radius_miles) else False
+
+    def calculate_distance(self, other_user):
+        """ Given a different user, calculate the direct distance in miles
+        between the two """
+        coordSelf = self.coordinates.split(',')
+        coordOther = other_user.coordinates.split(',')
+
+        coordSelfCalc = (float(coordSelf[1]), float(coordSelf[0]))
+        coordOtherCalc = (float(coordOther[1]), float(coordOther[0]))
+
+        return geodesic(coordSelfCalc, coordOtherCalc).miles
+
+    # TODO: get_coords could be moved out of the User class since it isn't strongly related to users
+    @classmethod
+    def get_coords(self, zip_code):
+        """ Gets the longitude, latitude of the Zip Code """
+        response = requests.get(f"{MAPBOX_API_BASE_URL}/geocoding/v5/mapbox.places/{zip_code}.json?access_token={MAPBOX_API_TOKEN}")
+        r = response.json()
+
+        coords = r["features"][0]["center"]
+
+        return f"{coords[0]},{coords[1]}" 
+
+    ############ POTENTIAL FRIENDS METHODS ###################################################
 
     def is_potential(self, other_user):
         """ Is this user a potential match? """
@@ -223,16 +245,6 @@ class User(db.Model):
             return True
 
     @classmethod
-    def get_coords(self, zip_code):
-        """ Gets the longitude, latitude of the Zip Code """
-        response = requests.get(f"{MAPBOX_API_BASE_URL}/geocoding/v5/mapbox.places/{zip_code}.json?access_token={MAPBOX_API_TOKEN}")
-        r = response.json()
-
-        coords = r["features"][0]["center"]
-
-        return f"{coords[0]},{coords[1]}" 
-    
-    @classmethod
     def get_list_of_potential_friends(cls, current_user):
         """ Given the current user, return a list of all potential friends. """
 
@@ -243,8 +255,20 @@ class User(db.Model):
 
         return list(filter(filterUsers, users))
 
+    ############ AUTHENTICATION METHODS ###################################################
+
     @classmethod
-    def signup(cls, username, email, password, first_name, last_name, image_url, hobbies, interests, zip_code, friend_radius):
+    def signup(cls,
+                username,
+                email,
+                password,
+                first_name,
+                last_name,
+                image_url,
+                hobbies,
+                interests,
+                zip_code,
+                friend_radius_miles):
         """Sign up user.
 
         Hashes password and adds user to system.
@@ -264,7 +288,7 @@ class User(db.Model):
             interests=interests,
             zip_code=zip_code,
             coordinates=coordinates,
-            friend_radius=friend_radius,
+            friend_radius_miles=friend_radius_miles,
         )
 
         db.session.add(user)
@@ -298,5 +322,3 @@ def connect_db(app):
 
     db.app = app
     db.init_app(app)
-
-
