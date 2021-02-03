@@ -13,6 +13,7 @@ email-validator==1.1.2
 Faker==5.8.0
 Flask==1.1.2
 Flask-Bcrypt==0.7.1
+Flask-Cors==3.0.10
 Flask-DebugToolbar==0.11.0
 Flask-SQLAlchemy==2.4.4
 Flask-WTF==0.14.3

@@ -4,6 +4,7 @@ from flask import Flask, request, session, g, abort, jsonify, make_response
 from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
 import jwt
+from flask_cors import CORS
 
 from forms import UserAddForm, LoginForm
 from models import db, connect_db, User, Like, Dislike
@@ -11,6 +12,7 @@ from models import db, connect_db, User, Like, Dislike
 CURR_USER_KEY = "curr_user"
 
 app = Flask(__name__)
+CORS(app)
 
 # Get DB_URI from environ variable (useful for production/testing) or,
 # if not set there, use development local db.
@@ -47,6 +49,7 @@ def add_user_to_g():
     """If we're logged in, add curr user to Flask global."""
     # TODO: this is currently throwing an error when invalid token/ no token is
     # passed. Need to update. 
+    print('request is -- add user to g', request.json)
     if "token" in request.json:
         token = request.json["token"]
         payload = jwt.decode(token, app.config.get('SECRET_KEY'), algorithms=["HS256"])
@@ -120,8 +123,9 @@ def login():
     """Handle user login."""
 
     received = request.json
+    print('received on backend', received)
     form = LoginForm(csrf_enabled=False, data=received)
-
+    print('form is', form)
     if form.validate_on_submit():
         user = User.authenticate(form.username.data,
                                  form.password.data)
