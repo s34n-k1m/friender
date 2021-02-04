@@ -4,7 +4,7 @@ from flask import Flask, request, session, g, abort, jsonify, make_response
 from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
 import jwt
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 
 from forms import UserAddForm, LoginForm
 from models import db, connect_db, User, Like, Dislike
@@ -44,12 +44,42 @@ def _get_json_message(msg, status_code):
 ##############################################################################
 # User signup/login/logout
 
-@app.before_request
+# @app.route('/test', methods=["POST"])
+# @cross_origin()
+# def test():
+#     print("REQUEST JSON =", request.json)
+#     if "token" in request.json:
+        
+#         token = request.json["token"]
+#         payload = jwt.decode(token, app.config.get('SECRET_KEY'), algorithms=["HS256"])
+
+#         if "username" in payload:
+#             g.user = User.query.filter_by(username=payload["username"]).first()
+
+#     else:
+#         g.user = None
+
+#     print('end of add_user_to_g, g.user=', g.user)
+    
+
+#     # g.user = None
+#     if not g.user:
+#         return "Ok"
+#         # return _get_json_message(INVALID_CREDENTIALS_MSG, INVALID_CREDENTIALS_STATUS_CODE)
+
+#     # user = User.query.get_or_404(user_id)
+
+#     # return jsonify(user=user.serialize())
+#     return "Ok"
+
+
+# @app.before_request
 def add_user_to_g():
     """If we're logged in, add curr user to Flask global."""
     # TODO: this is currently throwing an error when invalid token/ no token is
     # passed. Need to update. 
-    print('request is -- add user to g', request.json)
+    print('!!!!!! request is method', request.method)
+    print('!!!!!! request is -- add user to g', request.json)
     if "token" in request.json:
         token = request.json["token"]
         payload = jwt.decode(token, app.config.get('SECRET_KEY'), algorithms=["HS256"])
@@ -75,6 +105,7 @@ def do_login(user):
 
 
 @app.route('/signup', methods=["POST"])
+@cross_origin()
 def signup():
     """Handle user signup.
 
@@ -119,6 +150,7 @@ def signup():
 
 
 @app.route('/login', methods=["POST"])
+@cross_origin()
 def login():
     """Handle user login."""
 
@@ -127,11 +159,15 @@ def login():
     form = LoginForm(csrf_enabled=False, data=received)
     print('form is', form)
     if form.validate_on_submit():
+        print("Entered IF")
         user = User.authenticate(form.username.data,
                                  form.password.data)
-
+        
+        print("user is", user)
         if user:
             token = do_login(user)
+            
+            print("token is", token)
 
             return (jsonify(
                     user=user.serialize(),
@@ -142,7 +178,8 @@ def login():
 ##############################################################################
 # General user routes:
 
-@app.route('/users/<int:user_id>')
+@app.route('/users/<int:user_id>', methods=["POST"])
+@cross_origin()
 def users_show(user_id):
     """Get a user info.
     Returns JSON: 
@@ -161,6 +198,19 @@ def users_show(user_id):
             }
         }
     """
+
+    if "token" in request.json:
+        token = request.json["token"]
+        payload = jwt.decode(token, app.config.get('SECRET_KEY'), algorithms=["HS256"])
+
+        if "username" in payload:
+            g.user = User.query.filter_by(username=payload["username"]).first()
+
+    else:
+        g.user = None
+
+
+
     if not g.user:
         # TODO: create an underscore function 
         return _get_json_message(INVALID_CREDENTIALS_MSG, INVALID_CREDENTIALS_STATUS_CODE)
@@ -169,7 +219,8 @@ def users_show(user_id):
 
     return jsonify(user=user.serialize())
 
-@app.route('/users/<int:user_id>/potentials')
+@app.route('/users/<int:user_id>/potentials', methods=["POST"])
+@cross_origin()
 def get_potential_friends(user_id):
     """Get list of users that are potential friends for the current user. 
     Potential friends are ones where:
@@ -177,6 +228,17 @@ def get_potential_friends(user_id):
     - other user has not already diskliked
     - distance between users is less than both user's friend radii
     """
+
+    if "token" in request.json:
+        token = request.json["token"]
+        payload = jwt.decode(token, app.config.get('SECRET_KEY'), algorithms=["HS256"])
+
+        if "username" in payload:
+            g.user = User.query.filter_by(username=payload["username"]).first()
+
+    else:
+        g.user = None
+
 
     if not g.user:
         return _get_json_message(INVALID_CREDENTIALS_MSG, INVALID_CREDENTIALS_STATUS_CODE)
@@ -192,6 +254,7 @@ def get_potential_friends(user_id):
     return jsonify(user_options=user_options_serialized)
 
 @app.route('/users/like/<int:other_id>', methods=['POST'])
+@cross_origin()
 def like_potential_friend(other_id):
     """Like a potential friend for logged in user."""
 
@@ -210,6 +273,7 @@ def like_potential_friend(other_id):
     return jsonify(status="user-liked")
 
 @app.route('/users/dislike/<int:other_id>', methods=['POST'])
+@cross_origin()
 def dislike_potential_friend(other_id):
     """Dislike a potential friend for logged in user."""
 
