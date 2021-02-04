@@ -44,44 +44,13 @@ def _get_json_message(msg, status_code):
 ##############################################################################
 # User signup/login/logout
 
-# @app.route('/test', methods=["POST"])
-# @cross_origin()
-# def test():
-#     print("REQUEST JSON =", request.json)
-#     if "token" in request.json:
-        
-#         token = request.json["token"]
-#         payload = jwt.decode(token, app.config.get('SECRET_KEY'), algorithms=["HS256"])
 
-#         if "username" in payload:
-#             g.user = User.query.filter_by(username=payload["username"]).first()
-
-#     else:
-#         g.user = None
-
-#     print('end of add_user_to_g, g.user=', g.user)
-    
-
-#     # g.user = None
-#     if not g.user:
-#         return "Ok"
-#         # return _get_json_message(INVALID_CREDENTIALS_MSG, INVALID_CREDENTIALS_STATUS_CODE)
-
-#     # user = User.query.get_or_404(user_id)
-
-#     # return jsonify(user=user.serialize())
-#     return "Ok"
-
-
-# @app.before_request
+@app.before_request
 def add_user_to_g():
     """If we're logged in, add curr user to Flask global."""
-    # TODO: this is currently throwing an error when invalid token/ no token is
-    # passed. Need to update. 
-    print('!!!!!! request is method', request.method)
-    print('!!!!!! request is -- add user to g', request.json)
-    if "token" in request.json:
-        token = request.json["token"]
+    print('request headers are:', request.headers)
+    if "Authorization" in request.headers:
+        token = request.headers["Authorization"]
         payload = jwt.decode(token, app.config.get('SECRET_KEY'), algorithms=["HS256"])
 
         if "username" in payload:
@@ -89,8 +58,6 @@ def add_user_to_g():
 
     else:
         g.user = None
-
-    print('end of add_user_to_g, g.user=', g.user)
 
 
 def do_login(user):
@@ -178,7 +145,7 @@ def login():
 ##############################################################################
 # General user routes:
 
-@app.route('/users/<int:user_id>', methods=["POST"])
+@app.route('/users/<int:user_id>')
 @cross_origin()
 def users_show(user_id):
     """Get a user info.
@@ -199,20 +166,8 @@ def users_show(user_id):
         }
     """
 
-    if "token" in request.json:
-        token = request.json["token"]
-        payload = jwt.decode(token, app.config.get('SECRET_KEY'), algorithms=["HS256"])
-
-        if "username" in payload:
-            g.user = User.query.filter_by(username=payload["username"]).first()
-
-    else:
-        g.user = None
-
-
 
     if not g.user:
-        # TODO: create an underscore function 
         return _get_json_message(INVALID_CREDENTIALS_MSG, INVALID_CREDENTIALS_STATUS_CODE)
 
     user = User.query.get_or_404(user_id)
@@ -229,17 +184,6 @@ def get_potential_friends(user_id):
     - distance between users is less than both user's friend radii
     """
 
-    if "token" in request.json:
-        token = request.json["token"]
-        payload = jwt.decode(token, app.config.get('SECRET_KEY'), algorithms=["HS256"])
-
-        if "username" in payload:
-            g.user = User.query.filter_by(username=payload["username"]).first()
-
-    else:
-        g.user = None
-
-
     if not g.user:
         return _get_json_message(INVALID_CREDENTIALS_MSG, INVALID_CREDENTIALS_STATUS_CODE)
 
@@ -252,6 +196,9 @@ def get_potential_friends(user_id):
     user_options_serialized = [user.serialize() for user in user_options]
 
     return jsonify(user_options=user_options_serialized)
+
+##############################################################################
+# User likes/ dislikes
 
 @app.route('/users/like/<int:other_id>', methods=['POST'])
 @cross_origin()
