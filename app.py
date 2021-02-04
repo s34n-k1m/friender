@@ -8,6 +8,9 @@ from flask_cors import CORS, cross_origin
 
 from forms import UserAddForm, LoginForm
 from models import db, connect_db, User, Like, Dislike
+from helpers import upload_file_to_s3
+from secret import S3_BUCKET
+from werkzeug.utils import secure_filename
 
 CURR_USER_KEY = "curr_user"
 
@@ -196,6 +199,34 @@ def get_potential_friends(user_id):
     user_options_serialized = [user.serialize() for user in user_options]
 
     return jsonify(user_options=user_options_serialized)
+
+@app.route('/users/<int:user_id>/image-upload', methods=["POST"])
+@cross_origin()
+def upload_img_to_s3(user_id):
+    """Upload user image to AWS S3
+    """
+
+    if not g.user:
+        return _get_json_message(INVALID_CREDENTIALS_MSG, INVALID_CREDENTIALS_STATUS_CODE)
+
+    img = request.files['file']
+    if img:
+        # TODO: Need a way to create unique filenames so it doesn't overwrite 
+        # existing files with the same name in S3
+        filename = secure_filename(img.filename)
+        img.save(filename)
+        output = upload_file_to_s3(img, S3_BUCKET)
+
+        # Updates the current user's image url to the uploading image
+        current_user = User.query.get_or_404(user_id)
+        current_user.image_url = str(output)
+        db.session.commit()
+
+        return jsonify(status="upload-successful", image_url=str(output))
+    
+    return _get_json_message("no-image", 400)
+
+
 
 ##############################################################################
 # User likes/ dislikes
