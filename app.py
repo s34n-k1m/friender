@@ -36,7 +36,7 @@ INVALID_CREDENTIALS_STATUS_CODE = 400
 
 def _get_json_message(msg, status_code):
     """ Takes a message and status code and returns JSON
-        
+
         Returns:
         {
             status: "invalid-credentitials"
@@ -54,7 +54,8 @@ def add_user_to_g():
     print('request headers are:', request.headers)
     if "Authorization" in request.headers:
         token = request.headers["Authorization"]
-        payload = jwt.decode(token, app.config.get('SECRET_KEY'), algorithms=["HS256"])
+        payload = jwt.decode(token, app.config.get(
+            'SECRET_KEY'), algorithms=["HS256"])
 
         if "username" in payload:
             g.user = User.query.filter_by(username=payload["username"]).first()
@@ -132,21 +133,22 @@ def login():
         print("Entered IF")
         user = User.authenticate(form.username.data,
                                  form.password.data)
-        
+
         print("user is", user)
         if user:
             token = do_login(user)
-            
+
             print("token is", token)
 
             return (jsonify(
                     user=user.serialize(),
                     token=token), 201)
-    
+
     return _get_json_message(INVALID_CREDENTIALS_MSG, INVALID_CREDENTIALS_STATUS_CODE)
 
 ##############################################################################
 # General user routes:
+
 
 @app.route('/users/<int:user_id>')
 @cross_origin()
@@ -169,13 +171,13 @@ def users_show(user_id):
         }
     """
 
-
     if not g.user:
         return _get_json_message(INVALID_CREDENTIALS_MSG, INVALID_CREDENTIALS_STATUS_CODE)
 
     user = User.query.get_or_404(user_id)
 
     return jsonify(user=user.serialize())
+
 
 @app.route('/users/<int:user_id>/potentials', methods=["POST"])
 @cross_origin()
@@ -200,6 +202,7 @@ def get_potential_friends(user_id):
 
     return jsonify(user_options=user_options_serialized)
 
+
 @app.route('/users/<int:user_id>/image-upload', methods=["POST"])
 @cross_origin()
 def upload_img_to_s3(user_id):
@@ -211,11 +214,11 @@ def upload_img_to_s3(user_id):
 
     img = request.files['file']
     if img:
-        # TODO: Need a way to create unique filenames so it doesn't overwrite 
+        # TODO: Need a way to create unique filenames so it doesn't overwrite
         # existing files with the same name in S3
         filename = secure_filename(img.filename)
         img.save(filename)
-        output = upload_file_to_s3(img, S3_BUCKET)
+        output = upload_file_to_s3(S3_BUCKET, filename)
 
         # Updates the current user's image url to the uploading image
         current_user = User.query.get_or_404(user_id)
@@ -223,9 +226,8 @@ def upload_img_to_s3(user_id):
         db.session.commit()
 
         return jsonify(status="upload-successful", image_url=str(output))
-    
-    return _get_json_message("no-image", 400)
 
+    return _get_json_message("no-image", 400)
 
 
 ##############################################################################
@@ -249,6 +251,7 @@ def like_potential_friend(other_id):
     db.session.commit()
 
     return jsonify(status="user-liked")
+
 
 @app.route('/users/dislike/<int:other_id>', methods=['POST'])
 @cross_origin()

@@ -7,16 +7,15 @@ s3 = boto3.client(
    aws_secret_access_key=S3_SECRET
 )
 
-def upload_file_to_s3(file, bucket_name, acl="public-read"):
+def upload_file_to_s3(bucket_name, filename, acl="public-read"):
     """ Helper function upload file to AWS s3 """
     try:
-        s3.upload_fileobj(
-            file,
-            bucket_name,
-            file.filename,
+        s3.upload_file(
+            Bucket = bucket_name,
+            Filename = filename,
+            Key = filename,
             ExtraArgs={
-                "ACL": acl,
-                "ContentType": file.content_type
+                "ACL": acl
             }
         )
 
@@ -25,4 +24,4 @@ def upload_file_to_s3(file, bucket_name, acl="public-read"):
         print("Error: ", e)
         return e
     
-    return "{}{}".format(S3_LOCATION, file.filename)
+    return "{}{}".format(S3_LOCATION, filename)
