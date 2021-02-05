@@ -82,7 +82,7 @@ def do_login(user):
 
 
 @app.route('/signup', methods=["POST"])
-@cross_origin()
+# @cross_origin()
 def signup():
     """Handle user signup.
 
@@ -127,7 +127,7 @@ def signup():
 
 
 @app.route('/login', methods=["POST"])
-@cross_origin()
+# @cross_origin()
 def login():
     """Handle user login.
     Takes in JSON {username, password}
@@ -156,7 +156,7 @@ def login():
 
 
 @app.route('/users/<int:user_id>')
-@cross_origin()
+# @cross_origin()
 def users_show(user_id):
     """Get a user info.
     Returns JSON: 
@@ -185,7 +185,7 @@ def users_show(user_id):
 
 
 @app.route('/users/<int:user_id>/potentials')
-@cross_origin()
+# @cross_origin()
 def get_potential_friends(user_id):
     """Get list of users that are potential friends for the current user. 
 
@@ -216,7 +216,7 @@ def get_potential_friends(user_id):
 
 
 @app.route('/users/<int:user_id>/image-upload', methods=["POST"])
-@cross_origin()
+# @cross_origin()
 def upload_img_to_s3(user_id):
     """Upload user image to AWS S3
     Calls helper function upload_file_to_s3
@@ -250,7 +250,7 @@ def upload_img_to_s3(user_id):
 # User likes/ dislikes
 
 @app.route('/users/like/<int:other_id>', methods=['POST'])
-@cross_origin()
+# @cross_origin()
 def like_potential_friend(other_id):
     """Like a potential friend for logged in user.
     Checks if like is in current user's list of potential friends.
@@ -278,7 +278,7 @@ def like_potential_friend(other_id):
 
 
 @app.route('/users/dislike/<int:other_id>', methods=['POST'])
-@cross_origin()
+# @cross_origin()
 def dislike_potential_friend(other_id):
     """Dislike a potential friend for logged in user.
     Checks if like is in current user's list of potential friends.
