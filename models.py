@@ -5,6 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 # from secret import MAPBOX_API_TOKEN
 import requests
 from geopy.distance import geodesic
+import os
 MAPBOX_API_TOKEN=os.environ.get('MAPBOX_API_TOKEN')
 
 bcrypt = Bcrypt()
