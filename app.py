@@ -179,7 +179,7 @@ def users_show(user_id):
     return jsonify(user=user.serialize())
 
 
-@app.route('/users/<int:user_id>/potentials', methods=["POST"])
+@app.route('/users/<int:user_id>/potentials')
 @cross_origin()
 def get_potential_friends(user_id):
     """Get list of users that are potential friends for the current user. 
