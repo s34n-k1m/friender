@@ -2,9 +2,10 @@
 
 from flask_bcrypt import Bcrypt
 from flask_sqlalchemy import SQLAlchemy
-from secret import MAPBOX_API_TOKEN
+# from secret import MAPBOX_API_TOKEN
 import requests
 from geopy.distance import geodesic
+MAPBOX_API_TOKEN=os.environ.get('MAPBOX_API_TOKEN')
 
 bcrypt = Bcrypt()
 db = SQLAlchemy()
