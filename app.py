@@ -9,10 +9,14 @@ from flask_cors import CORS, cross_origin
 from forms import UserAddForm, LoginForm
 from models import db, connect_db, User, Like, Dislike
 from helpers import upload_file_to_s3
-from secret import S3_BUCKET
+# from secret import S3_BUCKET
 from werkzeug.utils import secure_filename
 
+from dotenv import load_dotenv
+load_dotenv()
+
 CURR_USER_KEY = "curr_user"
+S3_BUCKET = os.environ.get('S3_BUCKET')
 
 app = Flask(__name__)
 CORS(app)
