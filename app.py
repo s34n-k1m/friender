@@ -50,8 +50,10 @@ def _get_json_message(msg, status_code):
 
 @app.before_request
 def add_user_to_g():
-    """If we're logged in, add curr user to Flask global."""
-    print('request headers are:', request.headers)
+    """If we're logged in, add curr user to Flask global.
+    Authorization is provided in the request header with a key of
+    "Authorization" 
+    """
     if "Authorization" in request.headers:
         token = request.headers["Authorization"]
         payload = jwt.decode(token, app.config.get(
@@ -123,23 +125,22 @@ def signup():
 @app.route('/login', methods=["POST"])
 @cross_origin()
 def login():
-    """Handle user login."""
+    """Handle user login.
+    Takes in JSON {username, password}
+    Returns JSON {user, token} if valid
+
+    If data is not valid, returns JSON with error message.
+
+    """
 
     received = request.json
-    print('received on backend', received)
     form = LoginForm(csrf_enabled=False, data=received)
-    print('form is', form)
     if form.validate_on_submit():
-        print("Entered IF")
         user = User.authenticate(form.username.data,
                                  form.password.data)
 
-        print("user is", user)
         if user:
             token = do_login(user)
-
-            print("token is", token)
-
             return (jsonify(
                     user=user.serialize(),
                     token=token), 201)
@@ -183,10 +184,17 @@ def users_show(user_id):
 @cross_origin()
 def get_potential_friends(user_id):
     """Get list of users that are potential friends for the current user. 
+
     Potential friends are ones where:
-    - current user has not already liked/disliked
-    - other user has not already diskliked
-    - distance between users is less than both user's friend radii
+        - current user has not already liked/disliked
+        - other user has not already diskliked
+        - distance between users is less than both user's friend radii
+
+    Returns JSON {user_options: [ user, ...]}
+        Where user { email, first_name, last_name, friend_radius_miles, hobbies,
+                    image_url, interests, username, zip_code, coordinates}
+
+    If no user is logged in, return JSON with error message.
     """
 
     if not g.user:
@@ -207,6 +215,10 @@ def get_potential_friends(user_id):
 @cross_origin()
 def upload_img_to_s3(user_id):
     """Upload user image to AWS S3
+    Calls helper function upload_file_to_s3
+    Returns JSON {status, image_url}
+
+    If no user is logged in, return JSON with error message.
     """
 
     if not g.user:
@@ -236,7 +248,15 @@ def upload_img_to_s3(user_id):
 @app.route('/users/like/<int:other_id>', methods=['POST'])
 @cross_origin()
 def like_potential_friend(other_id):
-    """Like a potential friend for logged in user."""
+    """Like a potential friend for logged in user.
+    Checks if like is in current user's list of potential friends.
+    If valid, adds user to current user's potential friends and updates
+    database. 
+
+    Returns JSON {status}
+
+    If no user is logged in, return JSON with error message.
+    """
 
     if not g.user:
         return _get_json_message(INVALID_CREDENTIALS_MSG, INVALID_CREDENTIALS_STATUS_CODE)
@@ -256,7 +276,16 @@ def like_potential_friend(other_id):
 @app.route('/users/dislike/<int:other_id>', methods=['POST'])
 @cross_origin()
 def dislike_potential_friend(other_id):
-    """Dislike a potential friend for logged in user."""
+    """Dislike a potential friend for logged in user.
+    Checks if like is in current user's list of potential friends.
+    If valid, adds user to current user's potential friends and updates
+    database. 
+    
+    Returns JSON {status}
+
+    If no user is logged in, return JSON with error message.
+    
+    """
 
     if not g.user:
         return _get_json_message(INVALID_CREDENTIALS_MSG, INVALID_CREDENTIALS_STATUS_CODE)

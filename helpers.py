@@ -1,6 +1,7 @@
 import boto3
 from secret import S3_KEY, S3_SECRET, S3_BUCKET, S3_LOCATION
 
+# Connect to AWS S3
 s3 = boto3.client(
    "s3",
    aws_access_key_id=S3_KEY,

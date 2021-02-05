@@ -3,12 +3,6 @@ from wtforms import StringField, PasswordField, TextAreaField
 from wtforms.validators import InputRequired, Email, Length
 
 
-# class LikeForm(FlaskForm):
-#     """Form for adding/editing messages."""
-
-#     text = TextAreaField('text', validators=[InputRequired()])
-
-
 class UserAddForm(FlaskForm):
     """Form for adding users."""
 
@@ -23,6 +17,7 @@ class UserAddForm(FlaskForm):
     zip_code = StringField('Zip Code', validators=[InputRequired()])
     friend_radius_miles = StringField('Friend Radius', validators=[InputRequired()])
 
+# TODO: update this UserEditForm.
 # class UserEditForm(FlaskForm):
 #     """Form for editing users."""
 
